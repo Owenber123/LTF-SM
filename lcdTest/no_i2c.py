@@ -4,14 +4,9 @@ import smbus
 import time
 import RPi.GPIO as GPIO
 #from pynput.mouse import Listener
-import os
-import sys
-sys.path.append("MCP23017-python/src/")
 from mcp23017 import *
 from enum import Enum
 from i2c import I2C
-
-VERSION = "1.0.0"
 
 class State(Enum):
     INIT = 1
@@ -30,22 +25,22 @@ class State(Enum):
 #pwm.start(0)
 
 # Define Pins
-REDLED = GPA4
-GREENLED = GPA3
-PASSSW = GPA1
-FAILSW = GPA2
+REDLED = GPA0
+GREENLED = GPA1
+PASSSW = GPA2
+FAILSW = GPA3
 
 # Initialize I2C bus for expander board use
-i2c = I2C(smbus.SMBus(11))
-mcp = MCP23017(0x20, i2c) # MCP23017
+#i2c = I2C(smbus.SMBus(11))
+#mcp = MCP23017(0x20, i2c) # MCP23017
 
 # Configure led gpios as outputs
-mcp.pin_mode(REDLED, OUTPUT)
-mcp.pin_mode(GREENLED, OUTPUT)
+#mcp.pin_mode(REDLED, OUTPUT)
+#mcp.pin_mode(GREENLED, OUTPUT)
 
 # Configure pullup resistors on button ios
-mcp.pin_mode(PASSSW, INPUT)
-mcp.pin_mode(FAILSW, INPUT)
+#mcp.pin_mode(PASSSW, INPUT)
+#mcp.pin_mode(FAILSW, INPUT)
 
 pygame.init()
 screen_X = 800
@@ -95,15 +90,11 @@ intro_text = font.render('LCD and Capacitive Overlay Test Starting', True, white
 introRect = intro_text.get_rect()
 introRect.center = (screen_X // 2, screen_Y // 3)
 
-version_text = font.render('Version: ' + VERSION, True, white, blue)
-versionRect = version_text.get_rect()
-versionRect.center = (screen_X // 2, screen_Y // 2 + screen_Y // 16)
-
-instruction = font.render('Press Pass Button To Start', True, white, blue)
+instruction = font.render('Press Green Button To Start', True, white, blue)
 instructionRect = instruction.get_rect()
 instructionRect.center = (screen_X // 2, screen_Y // 2 + screen_Y // 4)
 
-lcd_instructions = font.render('Press Pass Button if Image is Displayed', True, white, black)
+lcd_instructions = font.render('Press Green Button if Image is Displayed', True, white, black)
 lcd_instructionsRect = lcd_instructions.get_rect()
 lcd_instructionsRect.center = (screen_X // 2, screen_Y // 2)
 
@@ -117,22 +108,6 @@ failed_textRect.center = (screen_X // 2, screen_Y // 2)
 passed_text = font.render('Test Passed', True, white, green)
 passed_textRect = passed_text.get_rect()
 passed_textRect.center = (screen_X // 2, screen_Y // 2)
-
-replace_screen_fail_text = font.render('Replace Screen', True, white, red)
-replace_screen_fail_text_Rect = replace_screen_fail_text.get_rect()
-replace_screen_fail_text_Rect.center = (screen_X // 2, screen_Y // 2)
-
-replace_screen_pass_text = font.render('Replace Screen', True, white, green)
-replace_screen_pass_text_Rect = replace_screen_pass_text.get_rect()
-replace_screen_pass_text_Rect.center = (screen_X // 2, screen_Y // 2)
-
-restart_instructions_fail = font.render('Press Pass Button to Start New Test', True, white, red)
-restart_instructions_fail_Rect = restart_instructions_fail.get_rect()
-restart_instructions_fail_Rect.center = (screen_X // 2, screen_Y // 2 + screen_Y // 4)
-
-restart_instructions_pass = font.render('Press Pass Button to Start New Test', True, white, green)
-restart_instructions_pass_Rect = restart_instructions_pass.get_rect()
-restart_instructions_pass_Rect.center = (screen_X // 2, screen_Y // 2 + screen_Y // 4)
 
 
 # define listener for touch screen presses
@@ -211,41 +186,25 @@ while not done:
                         print("click: ", mouse[0], " ", mouse[1]);
         
         pressed = pygame.key.get_pressed()
-        if state != State.PASSED and state != State.FAILED:
-            try:
-                if mcp.digital_read(FAILSW) == LOW:
-                        state = State.FAILED
-            except OSError as error:
-                print(error)
-
+#        if mcp.digital_read(FAILSW) == HIGH:
+#                state = State.FAILED
         if continue_test:
             if state == State.INIT:
-                try:
-                    if pressed[pygame.K_SPACE] or mcp.digital_read(PASSSW) == LOW:
-                        state = State.LCD
-                        time.sleep(1)
-                except OSError as error:
-                    print(error)
-
+                if pressed[pygame.K_SPACE]: # or mcp.digital_read(PASSSW) == HIGH:
+                    state = State.LCD
+                    time.sleep(1)
                 screen.fill(blue)
                 display_surface.blit(intro_text, introRect)
-                display_surface.blit(version_text, versionRect)
                 display_surface.blit(instruction, instructionRect)
-                try:
-                    mcp.digital_write(REDLED, LOW)
-                    mcp.digital_write(GREENLED, LOW)
-                except OSError as error:
-                    print(error)
+#                mcp.digital_write(REDLED, LOW)
+#                mcp.digital_write(GREENLED, LOW)
+
             elif state == State.LCD:
                 screen.fill(blue)
-                try:
-                    if pressed[pygame.K_SPACE] or mcp.digital_read(PASSSW) == LOW:
-                        state = State.CAP_OVERLAY
-                        screen.fill(blue)
-                        time.sleep(1)
-                except OSError as error:
-                    print(error)
-
+                if pressed[pygame.K_SPACE]: # or mcp.digital_read(PASSSW) == HIGH:
+                    state = State.CAP_OVERLAY
+                    screen.fill(blue)
+                    time.sleep(1)
                 screen.blit(background_image, [0, 0])
                 display_surface.blit(lcd_instructions, lcd_instructionsRect)
 
@@ -290,7 +249,6 @@ while not done:
                         time.sleep(1)
                 else:
                     state = State.PASSED
-                    #continue
                     
                 if(update_screen):
                     if event.type == pygame.MOUSEBUTTONDOWN:
@@ -299,12 +257,8 @@ while not done:
 	                        print("valid Tap")
 	                        quadrant_to_tap += 1
 	                        update_screen = 0
-	                        time.sleep(.1)
-	                    else:
-	                        state = State.FAILED
                 else:
                     update_screen = 1
-                    # time.sleep(1)
 
                 pygame.draw.rect(screen, black, pygame.Rect(quadrant_coordinates))
                 target_center = cap_overlay_instructionsRect.center
@@ -315,44 +269,26 @@ while not done:
             elif state == State.PASSED:
                 screen.fill(green)
                 display_surface.blit(passed_text, passed_textRect)
-                display_surface.blit(replace_screen_pass_text, replace_screen_pass_text_Rect)
-                display_surface.blit(restart_instructions_pass, restart_instructions_pass_Rect)
-                try:
-                    mcp.digital_write(GREENLED, HIGH)
-                    mcp.digital_write(REDLED, LOW)
-                    if(mcp.digital_read(PASSSW) == LOW):
-                        restart_test = 1
-                except OSError as error:
-                    print(error)
+#                mcp.digital_write(GREENLED, HIGH)
+#                mcp.digital_write(REDLED, LOW)
+#                if(mcp.digital_read(PASSSW) == HIGH):
+#                       restart_test = 1
 
             elif state == State.FAILED:
                 # Attempt to retry conneciton if during Capacitive Overlay Test
                 screen.fill(red)
                 display_surface.blit(failed_text, failed_textRect)
-                display_surface.blit(replace_screen_fail_text, replace_screen_fail_text_Rect)
-                display_surface.blit(restart_instructions_fail, restart_instructions_fail_Rect)
-                try:
-                    mcp.digital_write(REDLED, HIGH)
-                    mcp.digital_write(GREENLED, LOW)
-
-                    if(mcp.digital_read(PASSSW) == LOW):
-                        restart_test = 1
-
-                except OSError as error:
-                    print(error)
+                #mcp.digital_write(REDLED, HIGH)
+                #mcp.digital_write(GREENLED, LOW)
+                #if(mcp.digital_read(PASSSW) == HIGH):
+                #       restart_test = 1
 
         else:
 #                if (state == State.CAP_OVERLAY):
 #                        state = State.INIT
                 screen.fill(red)
                 display_surface.blit(failed_text, failed_textRect)
-                display_surface.blit(replace_screen_fail_text, replace_screen_fail_text_Rect)
-                display_surface.blit(restart_instructions_fail, restart_instructions_fail_Rect)
-                try:
-                    mcp.digital_write(REDLED, HIGH)
-                    mcp.digital_write(GREENLED, LOW)
-                except OSError as error:
-                    print(error)
+                #mcp.digital_write(REDLED, HIGH)
 
         if restart_test:
                 restart_test = False
