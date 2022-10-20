@@ -1,4 +1,4 @@
-# LTF-SM
+# LED Display Manufactors Test Station Software
 
 
 ## Setup
